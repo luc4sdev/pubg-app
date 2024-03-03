@@ -13,42 +13,53 @@ interface PlayerProps {
     }
 }
 
-async function getPlayerByName(id: string): Promise<[Player, LifetimeStats, Clan]> {
-    const response = await api(`/shards/steam/players?filter[playerNames]=${id}`, {
-        next: {
-            revalidate: 60 * 60, // 1 hour
-        }
-    })
+type PlayerData = [Player, LifetimeStats, Clan];
 
-    const res = await response.json()
-    const player = res.data[0]
+async function getPlayerByName(id: string): Promise<PlayerData> {
 
-    const response2 = await api(`/shards/steam/players/${player.id}/seasons/lifetime?filter[gamepad]=false
+
+    try {
+        const response = await api(`/shards/steam/players?filter[playerNames]=${id}`, {
+            next: {
+                revalidate: 60 * 60, // 1 hour
+            }
+        })
+
+        const res = await response.json()
+        const player = res.data && res.data.length > 0 ? res.data[0] : null;
+
+
+        const response2 = await api(`/shards/steam/players/${player.id}/seasons/lifetime?filter[gamepad]=false
     `, {
-        next: {
-            revalidate: 60 * 60, // 1 hour
-        }
-    })
+            next: {
+                revalidate: 60 * 60, // 1 hour
+            }
+        })
 
-    const res2 = await response2.json()
-    const status = res2.data
+        const res2 = await response2.json()
+        const status = res2.data
 
 
-    const response3 = await api(`/shards/steam/clans/${player.attributes.clanId}`, {
-        next: {
-            revalidate: 60 * 60, // 1 hour
-        }
-    })
+        const response3 = await api(`/shards/steam/clans/${player.attributes.clanId}`, {
+            next: {
+                revalidate: 60 * 60, // 1 hour
+            }
+        })
 
-    const res3 = await response3.json()
-    const clan = res3.data
+        const res3 = await response3.json()
+        const clan = res3.data
 
-    return [player, status, clan]
+        return [player, status, clan]
+    }
+    catch (error) {
+        return Promise.reject(error);
+    }
+
 }
 
 export async function generateMetadata({ params }: PlayerProps): Promise<Metadata> {
 
-    const [player, status] = await getPlayerByName(params.id)
+    const [player] = await getPlayerByName(params.id)
 
     return {
         title: player.attributes.name,
@@ -59,10 +70,210 @@ export async function generateMetadata({ params }: PlayerProps): Promise<Metadat
 
 export default async function PlayerPage({ params }: PlayerProps) {
 
-    const [player, status, clan] = await getPlayerByName(params.id)
+    try {
+        const [player, status, clan] = await getPlayerByName(params.id)
 
 
-    function sumAllKills() {
+        return (
+            <div className="w-screen h-screen px-20 py-5 flex flex-col justify-start items-center gap-5 overflow-y-auto">
+                <div className="w-full flex flex-col justify-center items-center relative">
+                    <Link href='/' ><Home className="md:absolute left-0 hover:brightness-150" /></Link>
+                    <h1 className="text-xl md:text-3xl font-bold">Status de {player.attributes.name}</h1>
+                </div>
+
+                <div className="flex-1 w-full 2xl:w-2/3">
+                    <div className=" bg-zinc-900 grid grid-cols-3">
+
+                        <div className="col-span-3 md:col-span-1 flex flex-col justify-around items-center p-5 gap-5 border-b">
+                            <h2 className="text-2xl font-normal">Kill/Death</h2>
+                            <p className="text-5xl font-normal">{(sumAllKills(status) / sumAllDeaths(status)).toFixed(2)}</p>
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center">
+
+                                    <p className="text-lg font-semibold">Kills</p>
+
+                                    <div className="flex justify-center items-center gap-1">
+                                        <p className="text-lg font-semibold">{sumAllKills(status)}  </p>
+                                        <X className="w-full text-red-500" />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Deaths</p>
+
+                                    <div className="flex justify-center items-center gap-1">
+                                        <p className="text-lg font-semibold">{sumAllDeaths(status)}</p>
+                                        <Skull className="w-full text-gray-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="col-span-3 md:col-span-1 flex flex-col justify-around items-center p-5 md:border-x border-b gap-5">
+                            <h2 className="text-2xl font-normal">Wins/Lose</h2>
+                            <p className="text-5xl font-normal">{(sumAllWins(status) / sumAllLosses(status)).toFixed(2)}</p>
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Win</p>
+
+                                    <div className="flex justify-center items-center gap-1">
+                                        <p className="text-lg font-semibold">{sumAllWins(status)}</p>
+                                        <Trophy className="w-full text-yellow-300" />
+                                    </div>
+
+                                </div>
+
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Loses</p>
+
+                                    <div className="flex justify-center items-center gap-1">
+                                        <p className="text-lg font-semibold">{sumAllLosses(status)}</p>
+                                        <XCircle className="w-full text-red-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="col-span-3 md:col-span-1 flex flex-col justify-around items-center p-5 border-b gap-5">
+                            <h2 className="text-2xl font-normal">Highest Killstreak</h2>
+                            <p className="text-5xl font-normal">{getHighestKillstreak(status)}</p>
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center gap-2">
+                                    <p className="text-lg font-semibold">Longest time survived</p>
+
+                                    <div className="w-full flex justify-center items-center gap-1">
+                                        <Clock className="text-cyan-300" />
+                                        <p className="text-lg font-semibold">{getAndCalculateLongestTimeSurvived(status)} Minutes</p>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div className="col-span-3 md:col-span-1 flex flex-col justify-around items-center p-5 border-b gap-5">
+                            <h2 className="text-2xl font-normal">Longest Kill</h2>
+
+                            <div className="w-full flex justify-center items-center gap-2">
+                                <Ruler className="text-yellow-200" />
+                                <p className="text-5xl font-normal">{getLongestKill(status).toFixed(2)} m</p>
+                            </div>
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Roadkills</p>
+
+                                    <div className="w-full flex justify-center items-center gap-2">
+                                        <Accessibility className="text-green-500" />
+                                        <p className="text-lg font-semibold">{getRoadKills(status)}</p>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div className="col-span-3 md:col-span-1 flex flex-col justify-around items-center p-5 md:border-x border-b gap-5">
+                            <h2 className="text-2xl font-normal">Headshost</h2>
+
+                            <div className="w-full flex justify-center items-center gap-2">
+                                <p className="text-5xl font-normal">{getAllHeadshotsKills(status)}</p>
+                                <Crosshair className="text-green-500" />
+                            </div>
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Teamkills</p>
+
+                                    <div className="w-full flex justify-center items-center gap-2">
+                                        <p className="text-lg font-semibold">{getAllTeamKills(status)}</p>
+                                        <ThumbsDown className="text-red-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div className="col-span-3 md:col-span-1 flex flex-col justify-around items-center p-5 border-b gap-5">
+                            <h2 className="text-2xl font-normal">Vehicles destroyed</h2>
+
+                            <div className="w-full flex justify-center items-center gap-2">
+                                <p className="text-5xl font-normal">{getAllVehiclesDestroyed(status)}</p>
+                                <Car className="text-orange-500" />
+                            </div>
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Enemies knocked out</p>
+
+
+                                    <div className="w-full flex justify-center items-center gap-2">
+                                        <p className="text-lg font-semibold">{getAllEnemiesKnockedOut(status)}</p>
+                                        <Hand className="text-purple-500" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div className="flex flex-col justify-around items-center p-5 col-span-3">
+                            <h2 className="text-2xl font-normal">Damage given</h2>
+
+                            <div className="w-full flex justify-center items-center gap-2">
+                                <p className="text-5xl font-normal">{getAllDamageGiven(status).toFixed(0)}</p>
+                                <HeartPulse className="text-red-500" />
+                            </div>
+
+
+                            <div className="flex justify-around items-center gap-10">
+                                <div className="flex flex-col justify-center items-center">
+                                    <p className="text-lg font-semibold">Walked distance</p>
+
+                                    <div className="w-full flex justify-center items-center gap-2">
+                                        <p className="text-lg font-semibold">{getAllWalkedDistance(status).toFixed(2)} km</p>
+                                        <Footprints className="text-gray-500" />
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="col-span-3 bg-zinc-900 grid grid-cols-1 mt-10">
+                        <div className="flex flex-col justify-center items-center p-5 col-span-3 gap-5">
+                            <h2 className="text-3xl font-normal">Clan</h2>
+
+                            <div className="w-full flex flex-col justify-center items-center gap-2">
+                                <p className="text-2xl md:text-5xl font-normal">{clan.attributes.clanName} <span className="text-red-500">[{clan.attributes.clanTag}]</span></p>
+
+                                <p className="text-3xl font-normal">Members: {clan.attributes.clanMemberCount}/100</p>
+
+                                <p className="text-3xl font-normal">Level: {clan.attributes.clanLevel}</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+
+            </div>
+        )
+
+    } catch (error) {
+        return (
+            <div className="w-screen h-screen flex flex-col justify-center items-center gap-2">
+                <p className="text-2xl font-extrabold">Player não encontrado.</p>
+                <Link href='/' ><Home className="hover:brightness-150" /></Link>
+            </div>
+        );
+    }
+
+
+    function sumAllKills(status: LifetimeStats) {
         let kills = 0;
 
         kills += status.attributes.gameModeStats.duo.kills;
@@ -75,7 +286,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
         return kills
     }
 
-    function sumAllDeaths() {
+    function sumAllDeaths(status: LifetimeStats) {
         let deaths = 0;
 
         deaths += status.attributes.gameModeStats.duo.losses;
@@ -88,7 +299,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
         return deaths
     }
 
-    function sumAllWins() {
+    function sumAllWins(status: LifetimeStats) {
         let wins = 0;
 
         wins += status.attributes.gameModeStats.duo.wins;
@@ -101,7 +312,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
         return wins
     }
 
-    function sumAllLosses() {
+    function sumAllLosses(status: LifetimeStats) {
         let losses = 0;
 
         losses += status.attributes.gameModeStats.duo.losses;
@@ -115,7 +326,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getHighestKillstreak() {
+    function getHighestKillstreak(status: LifetimeStats) {
         let killstreak = 0;
 
         if (status.attributes.gameModeStats.duo.roundMostKills > killstreak) {
@@ -141,7 +352,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getAndCalculateLongestTimeSurvived() {
+    function getAndCalculateLongestTimeSurvived(status: LifetimeStats) {
         let longestTimeSurvived = 0;
 
         if (status.attributes.gameModeStats.duo.longestTimeSurvived > longestTimeSurvived) {
@@ -169,7 +380,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getLongestKill() {
+    function getLongestKill(status: LifetimeStats) {
         let longestKill = 0;
 
         if (status.attributes.gameModeStats.duo.longestKill > longestKill) {
@@ -195,7 +406,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getRoadKills() {
+    function getRoadKills(status: LifetimeStats) {
         let roadKills = 0;
 
         roadKills += status.attributes.gameModeStats.duo.roadKills;
@@ -208,7 +419,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
         return roadKills
     }
 
-    function getAllHeadshotsKills() {
+    function getAllHeadshotsKills(status: LifetimeStats) {
         let headshotKills = 0;
 
         headshotKills += status.attributes.gameModeStats.duo.headshotKills;
@@ -222,7 +433,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getAllTeamKills() {
+    function getAllTeamKills(status: LifetimeStats) {
         let teamKills = 0;
 
         teamKills += status.attributes.gameModeStats.duo.teamKills;
@@ -236,7 +447,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getAllVehiclesDestroyed() {
+    function getAllVehiclesDestroyed(status: LifetimeStats) {
         let vehicleDestroys = 0;
 
         vehicleDestroys += status.attributes.gameModeStats.duo.vehicleDestroys;
@@ -250,7 +461,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getAllEnemiesKnockedOut() {
+    function getAllEnemiesKnockedOut(status: LifetimeStats) {
         let dBNOs = 0;
 
         dBNOs += status.attributes.gameModeStats.duo.dBNOs;
@@ -264,7 +475,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
     }
 
 
-    function getAllDamageGiven() {
+    function getAllDamageGiven(status: LifetimeStats) {
         let damageDealt = 0;
 
         damageDealt += status.attributes.gameModeStats.duo.damageDealt;
@@ -277,7 +488,7 @@ export default async function PlayerPage({ params }: PlayerProps) {
         return damageDealt
     }
 
-    function getAllWalkedDistance() {
+    function getAllWalkedDistance(status: LifetimeStats) {
         let walkDistance = 0;
 
         walkDistance += status.attributes.gameModeStats.duo.walkDistance;
@@ -290,192 +501,4 @@ export default async function PlayerPage({ params }: PlayerProps) {
         return walkDistance
     }
 
-    return (
-        <div className="w-screen h-screen px-20 py-5 flex flex-col justify-start items-center gap-5 overflow-y-auto">
-            <div className="w-full flex justify-center items-center relative">
-                <Link href='/' ><Home className="absolute left-0 hover:brightness-150" /></Link>
-                <h1 className="text-3xl font-bold">Status de {player.attributes.name}</h1>
-            </div>
-
-            <div className="flex-1 w-full 2xl:w-2/3">
-                <div className=" bg-zinc-900 grid grid-cols-3">
-
-                    <div className="flex flex-col justify-around items-center p-5 border-b">
-                        <h2 className="text-2xl font-normal">Kill/Death</h2>
-                        <p className="text-5xl font-normal">{(sumAllKills() / sumAllDeaths()).toFixed(2)}</p>
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center">
-
-                                <p className="text-lg font-semibold">Kills</p>
-
-                                <div className="flex justify-center items-center gap-1">
-                                    <p className="text-lg font-semibold">{sumAllKills()}  </p>
-                                    <X className="w-full text-red-500" />
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Deaths</p>
-
-                                <div className="flex justify-center items-center gap-1">
-                                    <p className="text-lg font-semibold">{sumAllDeaths()}</p>
-                                    <Skull className="w-full text-gray-500" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col justify-around items-center p-5 border-x border-b">
-                        <h2 className="text-2xl font-normal">Wins/Lose</h2>
-                        <p className="text-5xl font-normal">{(sumAllWins() / sumAllLosses()).toFixed(2)}</p>
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Win</p>
-
-                                <div className="flex justify-center items-center gap-1">
-                                    <p className="text-lg font-semibold">{sumAllWins()}</p>
-                                    <Trophy className="w-full text-yellow-300" />
-                                </div>
-
-                            </div>
-
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Loses</p>
-
-                                <div className="flex justify-center items-center gap-1">
-                                    <p className="text-lg font-semibold">{sumAllLosses()}</p>
-                                    <XCircle className="w-full text-red-500" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col justify-around items-center p-5 border-b">
-                        <h2 className="text-2xl font-normal">Highest Killstreak</h2>
-                        <p className="text-5xl font-normal">{getHighestKillstreak()}</p>
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center gap-2">
-                                <p className="text-lg font-semibold">Longest time survived</p>
-
-                                <div className="w-full flex justify-center items-center gap-1">
-                                    <Clock className="text-cyan-300" />
-                                    <p className="text-lg font-semibold">{getAndCalculateLongestTimeSurvived()} Minutes</p>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div className="flex flex-col justify-around items-center p-5 border-b">
-                        <h2 className="text-2xl font-normal">Longest Kill</h2>
-
-                        <div className="w-full flex justify-center items-center gap-2">
-                            <Ruler className="text-yellow-200" />
-                            <p className="text-5xl font-normal">{getLongestKill().toFixed(2)} m</p>
-                        </div>
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Roadkills</p>
-
-                                <div className="w-full flex justify-center items-center gap-2">
-                                    <Accessibility className="text-green-500" />
-                                    <p className="text-lg font-semibold">{getRoadKills()}</p>
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div className="flex flex-col justify-around items-center p-5 border-x border-b">
-                        <h2 className="text-2xl font-normal">Headshost</h2>
-
-                        <div className="w-full flex justify-center items-center gap-2">
-                            <p className="text-5xl font-normal">{getAllHeadshotsKills()}</p>
-                            <Crosshair className="text-green-500" />
-                        </div>
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Teamkills</p>
-
-                                <div className="w-full flex justify-center items-center gap-2">
-                                    <p className="text-lg font-semibold">{getAllTeamKills()}</p>
-                                    <ThumbsDown className="text-red-500" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div className="flex flex-col justify-around items-center p-5 border-b">
-                        <h2 className="text-2xl font-normal">Vehicles destroyed</h2>
-
-                        <div className="w-full flex justify-center items-center gap-2">
-                            <p className="text-5xl font-normal">{getAllVehiclesDestroyed()}</p>
-                            <Car className="text-orange-500" />
-                        </div>
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Enemies knocked out</p>
-
-
-                                <div className="w-full flex justify-center items-center gap-2">
-                                    <p className="text-lg font-semibold">{getAllEnemiesKnockedOut()}</p>
-                                    <Hand className="text-purple-500" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div className="flex flex-col justify-around items-center p-5 col-span-3">
-                        <h2 className="text-2xl font-normal">Damage given</h2>
-
-                        <div className="w-full flex justify-center items-center gap-2">
-                            <p className="text-5xl font-normal">{getAllDamageGiven().toFixed(0)}</p>
-                            <HeartPulse className="text-red-500" />
-                        </div>
-
-
-                        <div className="flex justify-around items-center gap-10">
-                            <div className="flex flex-col justify-center items-center">
-                                <p className="text-lg font-semibold">Walked distance</p>
-
-                                <div className="w-full flex justify-center items-center gap-2">
-                                    <p className="text-lg font-semibold">{getAllWalkedDistance().toFixed(2)} km</p>
-                                    <Footprints className="text-gray-500" />
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-zinc-900 grid grid-cols-1 mt-10">
-                    <div className="flex flex-col justify-center items-center p-5 col-span-3 gap-5">
-                        <h2 className="text-3xl font-normal">Clan</h2>
-
-                        <div className="w-full flex flex-col justify-center items-center gap-2">
-                            <p className="text-5xl font-normal">{clan.attributes.clanName} <span className="text-red-500">[{clan.attributes.clanTag}]</span></p>
-
-                            <p className="text-3xl font-normal">Members: {clan.attributes.clanMemberCount}/100</p>
-
-                            <p className="text-3xl font-normal">Level: {clan.attributes.clanLevel}</p>
-                        </div>
-                    </div>
-                </div>
-
-                
-            </div>
-
-
-        </div>
-    )
 }
