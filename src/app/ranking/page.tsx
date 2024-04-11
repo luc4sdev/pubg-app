@@ -15,7 +15,7 @@ import { Home } from "lucide-react"
 async function getRankCurrentSeason(): Promise<[LeaderboardsIncluded[], currentSeasonId: string]> {
     const response = await api('/shards/steam/seasons', {
         next: {
-            revalidate: 60 * 60 * 24 * 30, // 1 month
+            revalidate: 60 * 60 * 24 * 15, // 15 days
         }
     })
 
@@ -29,7 +29,7 @@ async function getRankCurrentSeason(): Promise<[LeaderboardsIncluded[], currentS
 
     const response2 = await api(`/shards/pc-sa/leaderboards/${currentSeasonId}/squad-fpp`, {
         next: {
-            revalidate: 60 * 60, // 1 hour
+            revalidate: 60 * 30, // 30 minutes
         }
     })
 
