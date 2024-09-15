@@ -27,8 +27,7 @@ async function getPlayerByName(id: string): Promise<PlayerData> {
 
         const res = await response.json()
         const player = res.data && res.data.length > 0 ? res.data[0] : null;
-
-
+        console.log(player)
         const response2 = await api(`/shards/steam/players/${player.id}/seasons/lifetime?filter[gamepad]=false
     `, {
             next: {
@@ -38,7 +37,7 @@ async function getPlayerByName(id: string): Promise<PlayerData> {
 
         const res2 = await response2.json()
         const status = res2.data
-
+        console.log(status)
 
         const response3 = await api(`/shards/steam/clans/${player.attributes.clanId}`, {
             next: {
@@ -47,7 +46,22 @@ async function getPlayerByName(id: string): Promise<PlayerData> {
         })
 
         const res3 = await response3.json()
-        const clan = res3.data
+        const clan: Clan = res3.data
+
+        if (!clan) {
+            const clan: Clan = {
+                id: 'null',
+                type: 'null',
+                attributes: {
+                    clanLevel: 0,
+                    clanMemberCount: 0,
+                    clanName: 'null',
+                    clanTag: 'null'
+                }
+
+            }
+            return [player, status, clan]
+        }
 
         return [player, status, clan]
     }

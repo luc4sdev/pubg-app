@@ -14,6 +14,5 @@ export function api(path: string, init?: RequestInit) {
         ...init,
         headers: headers
     };
-    console.log(url)
     return fetch(url, updatedInit);
 }
