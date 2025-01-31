@@ -1,6 +1,3 @@
-import { api } from "@/data/api"
-import { LeaderboardsIncluded } from "@/data/types/leaderboards"
-import { Season } from "@/data/types/season"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -11,38 +8,11 @@ import platinum from '@/../../public/platinum.png'
 import diamond from '@/../../public/diamond.png'
 import master from '@/../../public/master.png'
 import { Home } from "lucide-react"
-
-async function getRankCurrentSeason(): Promise<[LeaderboardsIncluded[], currentSeasonId: string]> {
-    const response = await api('/shards/steam/seasons', {
-        next: {
-            revalidate: 60 * 60 * 24 * 15, // 15 days
-        }
-    })
-
-    const res = await response.json()
-    const seasons = res.data
-
-    const currentSeason: Season[] = seasons.filter((season: Season) => season.attributes.isCurrentSeason === true)
+import { getRankCurrentSeason } from "./actions"
 
 
-    const currentSeasonId = currentSeason[0].id
-
-    const response2 = await api(`/shards/pc-sa/leaderboards/${currentSeasonId}/squad-fpp`, {
-        next: {
-            revalidate: 60 * 30, // 30 minutes
-        }
-    })
-
-    const res2 = await response2.json()
-    const leaderboards = res2.included
-    console.log(leaderboards)
-
-    return [leaderboards, currentSeasonId]
-}
 
 export function generateMetadata() {
-
-
     return {
         title: 'Ranking',
     }
