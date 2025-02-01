@@ -156,13 +156,13 @@ export default async function PlayerPage({ params }: PlayerProps) {
                     <h2 className="text-2xl text-center font-semibold text-white mb-4">Clan</h2>
                     <div className="text-center">
                         <p className="text-3xl md:text-5xl font-bold text-sky-500">
-                            {clan.attributes?.clanName || 'Não disponível'} <span className="text-red-500">[{clan.attributes?.clanTag || 'Não disponível'}]</span>
+                            {clan.attributes?.clanName || 'Not available'} <span className="text-red-500">[{clan.attributes?.clanTag || 'Not available'}]</span>
                         </p>
                         <p className="text-xl md:text-2xl font-medium text-gray-300 mt-2">
-                            Members: {clan.attributes?.clanMemberCount || 'Não disponível'}/100
+                            Members: {clan.attributes?.clanMemberCount || 'Not available'}/100
                         </p>
                         <p className="text-xl md:text-2xl font-medium text-gray-300 mt-2">
-                            Level: {clan.attributes?.clanLevel || 'Não disponível'}
+                            Level: {clan.attributes?.clanLevel || 'Not available'}
                         </p>
                     </div>
                 </div>
