@@ -29,7 +29,7 @@ export default async function Ranking() {
         <div className="w-screen h-screen md:px-20 py-5 flex flex-col justify-start items-center gap-5 overflow-y-auto">
             <div className="w-full flex flex-col justify-center items-center relative">
                 <Link href='/' ><Home className="md:absolute left-0 hover:brightness-150" /></Link>
-                <h1 className="text-xl md:text-3xl font-extrabold">Season {currentSeasonId.slice(-2)} SA Ranking</h1>
+                <h1 className="text-xl md:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-amber-600">Season {currentSeasonId.slice(-2)} SA Ranking</h1>
             </div>
             <div className="flex-1 bg-zinc-800 w-full md:w-4/5">
                 <div className="flex flex-col justify-center items-center p-5 gap-5">
