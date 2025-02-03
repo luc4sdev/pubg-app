@@ -31,9 +31,12 @@ export default async function PlayerPage({ params }: PlayerProps) {
                     <Link href="/">
                         <Home className="md:absolute left-0 text-white hover:text-yellow-500 transition duration-300 cursor-pointer" size={32} />
                     </Link>
-                    <h1 className="text-2xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-purple-500">
+                    <h1 className="text-2xl md:text-4xl font-bold bg-clip-text text-transparent 
+    bg-gradient-to-r from-red-500 via-blue-500 to-purple-500 animate-gradient">
                         Status de {player.attributes.name}
                     </h1>
+
+
                 </div>
 
                 <div className="w-full 2xl:w-2/3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
